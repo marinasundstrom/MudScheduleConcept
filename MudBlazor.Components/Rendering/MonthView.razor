@@ -1,0 +1,216 @@
+﻿@using System.Globalization
+@implements IDisposable
+
+<MudText Typo="Typo.h3" Align="Align.Center">@CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Month) @Year</MudText>
+
+<MudButton StartIcon="@Icons.Material.Filled.ArrowLeft" OnClick="PrevMonth">Prev month</MudButton>
+
+<MudButton EndIcon="@Icons.Material.Filled.ArrowRight" OnClick="NextMonth">Next month</MudButton>
+
+<div>
+    <div class="calendar__header">
+        <div>Mon</div>
+        <div>Tue</div>
+        <div>Wed</div>
+        <div>Thu</div>
+        <div>Fri</div>
+        <div>Sat</div>
+        <div>Sun</div>
+    </div>
+    <div>
+        @foreach (var week in weeks)
+        {
+                <div class="calendar__week">
+                @foreach (var day in week.Days)
+                {
+                            <div class="calendar__day @(day.Date.Month != Month ? "disabled" : string.Empty)">
+                        @* @day.Date.ToShortDateString()*@
+                        @day.Date.Day
+                        @{
+                            var appointments = Appointments?
+                                    .Where(x => x.StartDate == day.Date);
+                        }
+                        @if (appointments is not null)
+                        {
+                            foreach (var appointment in appointments)
+                            {
+                                                <div style="background-color: lightblue">@appointment.Text</div>
+                            }
+                        }
+                            </div>
+                }
+                </div>
+        }
+    </div>
+</div>
+
+
+@code {
+
+    [Parameter] public int Year { get; set; }
+
+    [Parameter] public EventCallback<int> YearChanged { get; set; }
+
+    [Parameter] public int Month { get; set; }
+
+    [Parameter] public EventCallback<int> MonthChanged { get; set; }
+
+    [Parameter] public IReadOnlyCollection<Appointment> Appointments { get; set; }
+
+    List<Week> weeks = new List<Week>();
+
+    protected override void OnInitialized()
+    {
+        Year = DateTime.Now.Year;
+        Month = DateTime.Now.Month;
+
+        UpdateView();
+    }
+
+    public override async Task SetParametersAsync(ParameterView parameters)
+    {
+        await base.SetParametersAsync(parameters);
+
+        if (parameters.TryGetValue<int>(nameof(Year), out var _)
+            || parameters.TryGetValue<int>(nameof(Month), out var _))
+        {
+            UpdateView();
+        }
+    }
+
+    public void Dispose()
+    {
+    }
+
+    private void UpdateView()
+    {
+        weeks.Clear();
+
+        var firstDate = new DateTime(Year, Month, 1, 0, 0, 0);
+        var lastDate = new DateTime(Year, Month, DateTime.DaysInMonth(Year, Month));
+
+        Console.WriteLine(firstDate.ToShortDateString() + " - " + lastDate.ToShortDateString());
+
+        var dayBefore = firstDate.AddDays(-1);
+        var weekOfLastDate = ISOWeek.GetWeekOfYear(dayBefore);
+
+        var firstWeek = ISOWeek.GetWeekOfYear(firstDate);
+        var lastWeek = ISOWeek.GetWeekOfYear(lastDate);
+
+        int year = firstDate.Year;
+
+        if (dayBefore.Year != firstDate.Year
+            && weekOfLastDate == firstWeek)
+        {
+            year--;
+        }
+
+        Console.WriteLine(firstWeek + " - " + lastWeek);
+
+        var firstWeekStart = ISOWeek.ToDateTime(year, firstWeek, DayOfWeek.Monday);
+        var lastWeekEnd = ISOWeek.ToDateTime(lastDate.Year, lastWeek, DayOfWeek.Sunday);
+
+        DateTime date = firstWeekStart;
+
+        List<Day> days = new List<Day>();
+
+        while (date <= lastWeekEnd)
+        {
+            var week = ISOWeek.GetWeekOfYear(date);
+
+            var day = new Day(date);
+
+            var appointments = Appointments?
+                .Where(x => x.StartDate == day.Date);
+
+            if (appointments is not null)
+            {
+                foreach (var slot in appointments)
+                {
+                    day.Slots.Add(new Slot()
+                        {
+                            Text = slot.Text
+                        });
+                }
+            }
+
+            days.Add(day);
+
+            date = date.AddDays(1);
+
+            if (date.DayOfWeek == DayOfWeek.Monday)
+            {
+                weeks.Add(new Week
+                    {
+                        WeekNo = week,
+                        //StartDate = startOfWeek,
+                        //EndDate = startOfWeek.AddDays(7),
+                        Days = days
+                    });
+
+                days = new List<Day>();
+            }
+        }
+    }
+
+
+
+    public void PrevMonth()
+    {
+        if (Month == 1)
+        {
+            Year--;
+            Month = 12;
+            YearChanged.InvokeAsync(Year);
+            MonthChanged.InvokeAsync(Month);
+        }
+        else
+        {
+            Month--;
+            MonthChanged.InvokeAsync(Month);
+        }
+
+        UpdateView();
+    }
+
+    public void NextMonth()
+    {
+        if (Month == 12)
+        {
+            Year++;
+            Month = 1;
+            YearChanged.InvokeAsync(Year);
+            MonthChanged.InvokeAsync(Month);
+        }
+        else
+        {
+            Month++;
+            MonthChanged.InvokeAsync(Month);
+        }
+
+        UpdateView();
+    }
+
+    public class Week
+    {
+        public int WeekNo { get; set; }
+
+        public DateTime StartDate { get; set; }
+
+        public DateTime EndDate { get; set; }
+
+        public List<Day> Days = new List<Day>();
+    }
+
+    public class Day
+    {
+        public Day(DateTime date)
+        {
+            Date = date;
+        }
+
+        public DateTime Date { get; }
+
+        public List<Slot> Slots = new List<Slot>();
+    }
+}

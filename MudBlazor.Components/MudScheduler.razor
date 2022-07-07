@@ -1,0 +1,48 @@
+﻿@implements IScheduler
+
+<CascadingValue Value="this">
+    @ChildContent
+</CascadingValue>
+
+<il>
+    @foreach(var view in Views)
+    {
+        <li><a href="#" @onclick="() => SelectView(view)" @onclick:preventDefault>@view.Header</a></li>
+    }
+</il>
+
+@SelectedView?.Render();
+
+@code {
+    public SchedulerViewBase? SelectedView { get; set; }
+
+    public List<SchedulerViewBase> Views { get; } = new List<SchedulerViewBase>();
+
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+
+    [Parameter] public IReadOnlyCollection<Appointment> Appointments { get; set; } = null!;
+
+    public void SelectView(SchedulerViewBase schedulerView)
+    {
+        SelectedView = schedulerView;
+    }
+
+    void IScheduler.AddView(SchedulerViewBase schedulerView)
+    {   
+        Views.Add(schedulerView);
+
+        if(SelectedView == null)
+        {
+            SelectedView = schedulerView;
+        }
+
+        StateHasChanged();
+    }
+
+    void IScheduler.RemoveView(SchedulerViewBase schedulerView)
+    {
+        Views.Remove(schedulerView);
+
+        StateHasChanged();
+    }
+}

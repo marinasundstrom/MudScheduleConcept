@@ -1,0 +1,13 @@
+﻿@using MudBlazor.Rendering
+@inherits SchedulerViewBase
+
+@code {
+    [Parameter] public IReadOnlyCollection<Appointment> Appointments { get; set;  }
+
+    public override string Header => "Month view";
+
+    public override  RenderFragment Render()
+    {
+        return @<MonthView Appointments="Scheduler.Appointments" />;
+    }
+}

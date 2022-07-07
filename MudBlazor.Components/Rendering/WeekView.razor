@@ -1,0 +1,170 @@
+﻿@using System.Globalization
+@implements IDisposable
+
+<MudText Typo="Typo.h3" Align="Align.Center">Week @Week @Year</MudText>
+
+<MudButton StartIcon="@Icons.Material.Filled.ArrowLeft" OnClick="PrevWeek">Prev week</MudButton>
+
+<MudButton EndIcon="@Icons.Material.Filled.ArrowRight" OnClick="NextWeek">Next week</MudButton>
+
+<div>
+    <div class="calendar__header">
+        @foreach (var day in days)
+        {
+                <div>@day.Date.Day @day.Date.DayOfWeek</div>           
+        }
+    </div>
+    <div>
+            <div class="calendar__week">
+            @foreach (var day in days)
+            {
+                        <div class="calendar__day">
+                    @{
+                        DateTime time = day.Date;
+                        var appointments = Appointments?
+.Where(x => x.StartDate == day.Date);
+                    }
+
+                    @if (appointments is not null)
+                    {
+                        @foreach (var appointment in appointments)
+                        {
+                                        <div style="background-color: lightblue; position: absolute;">@appointment.Text</div>
+                        }
+                    }
+
+                    @foreach (var slot in day.Slots)
+                    {
+                                    <div class="calendar__slot">@time.ToShortTimeString()</div>
+
+                        time = time.Add(SlotSize);
+                    }
+                        </div>
+            }
+            </div>
+    </div>
+</div>
+
+
+@code {
+
+    [Parameter] public int Year { get; set; }
+
+    [Parameter] public EventCallback<int> YearChanged { get; set; }
+
+    [Parameter] public int Week { get; set; }
+
+    [Parameter] public EventCallback<int> WeekChanged { get; set; }
+
+    [Parameter] public IReadOnlyCollection<Appointment> Appointments { get; set; }
+
+    [Parameter] public TimeSpan SlotSize { get; set; } = TimeSpan.FromMinutes(15);
+
+    List<Day> days = new List<Day>();
+
+    protected override void OnInitialized()
+    {
+        Year = DateTime.Now.Year;
+        Week = ISOWeek.GetWeekOfYear(DateTime.Now);
+
+        UpdateView();
+    }
+
+    public override async Task SetParametersAsync(ParameterView parameters)
+    {
+        await base.SetParametersAsync(parameters);
+
+        if (parameters.TryGetValue<int>(nameof(Year), out var _)
+            || parameters.TryGetValue<int>(nameof(Week), out var _))
+        {
+            UpdateView();
+        }
+    }
+
+    public void Dispose()
+    {
+    }
+
+    private void UpdateView()
+    {
+        days.Clear();
+
+        var firstDate = ISOWeek.ToDateTime(Year, Week, DayOfWeek.Monday);
+        var lastDate = ISOWeek.ToDateTime(Year, Week, DayOfWeek.Sunday);
+
+        var date = firstDate;
+
+        while (date <= lastDate)
+        {
+            var day = new Day(date);
+
+            /*
+            var appointments = Appointments?
+                .Where(x => x.StartDate == day.Date);
+
+            if (appointments is not null)
+            {*/
+
+            for (int i = 0; i < 96; i++)
+            {
+                day.Slots.Add(new Slot()
+                    {
+                        Text = $"Slot {i}"
+                    });
+            }
+            /*}*/
+
+            days.Add(day);
+
+            date = date.AddDays(1);
+        }
+    }
+
+    public void PrevWeek()
+    {
+        if (Week == 1)
+        {
+            Year--;
+            Week = ISOWeek.GetWeeksInYear(Year);
+            YearChanged.InvokeAsync(Year);
+            WeekChanged.InvokeAsync(Week);
+        }
+        else
+        {
+            Week--;
+            WeekChanged.InvokeAsync(Week);
+        }
+
+        UpdateView();
+    }
+
+    public void NextWeek()
+    {
+        if (Week == 52)
+        {
+            Year++;
+            Week = 1;
+            YearChanged.InvokeAsync(Year);
+            WeekChanged.InvokeAsync(Week);
+        }
+        else
+        {
+            Week++;
+            WeekChanged.InvokeAsync(Week);
+        }
+
+        UpdateView();
+    }
+
+    public class Day
+    {
+        public Day(DateTime date)
+        {
+            Date = date;
+        }
+
+        public DateTime Date { get; }
+
+        public List<Slot> Slots = new List<Slot>();
+    }
+}

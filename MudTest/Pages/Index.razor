@@ -1,0 +1,56 @@
+﻿@page "/"
+@using MudTest
+
+<PageTitle>Index</PageTitle>
+
+<MudButton OnClick="AddAppointment">Add appointment</MudButton>
+
+<MudScheduler @ref="scheduler" Appointments="appointments">
+    <MudWeekView />
+    <MudMonthView />
+</MudScheduler>
+
+@*
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+    <MudTabPanel Text="Month">
+          <MudScheduler Appointments="appointments" />
+    </MudTabPanel>
+    <MudTabPanel Text="Week">
+        <MudSchedulerWeek Appointments="appointments" SlotSize="TimeSpan.FromMinutes(30)" />
+    </MudTabPanel>
+</MudTabs>
+*@
+
+
+@code {
+    MudScheduler scheduler;
+
+    List<Appointment> appointments = new List<Appointment>
+    {
+        new Appointment
+        {
+            StartDate = DateTime.Today,
+            EndDate = DateTime.Today.AddHours(24),
+            Text = "Hello"
+        }
+    };
+
+    public void AddAppointment()
+    {
+        appointments.Add(new Appointment
+            {
+                StartDate = DateTime.Today.AddDays(1),
+                Text = "Foo"
+            });
+    }
+
+//    public void Prev()
+//    {
+//        scheduler.PrevMonth();
+//    }
+
+//    public void Next()
+//    {
+//        scheduler.NextMonth();
+//    }
+}
